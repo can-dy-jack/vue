@@ -3,7 +3,21 @@
 	<head>
 		<meta charset="utf-8">
 		<title>vue.js</title>
+		<script src="vue.js"></script>
 	</head>
 	<body>
+		<div id="app">
+			{{message}} <br />
+			{{name}}
+		</div>
+		<script>
+			var app = new Vue({
+				el : '#app',
+				data:{
+					message : 'Hello Vue.js !',
+					name : 'Vue'
+				}
+			});
+		</script>
 	</body>
 </html>
