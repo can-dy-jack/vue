@@ -11,12 +11,12 @@ const data = {
 }
 // 副作用函数
 const effect = () => {
-  console.log(vue.name)
+  document.getElementById("app").innerText = vue.name
 }
 
 const vue = new Proxy(data, {
   get(target, key) {
-    bucket.add()
+    bucket.add(effect)
     return target[key]
   },
   set(target, key, newKey) {
@@ -29,6 +29,11 @@ const vue = new Proxy(data, {
 
 ## 响应
 ```js
+effect() // 初始化
+
 // 更改代理的属性，副作用函数会调用
-vue.name = "响应式！" // 打印：响应式！
+setTimeout(() => {
+  vue.name = "响应式！"
+}, 500)
+
 ```
