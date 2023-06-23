@@ -35,5 +35,4 @@ effect() // 初始化
 setTimeout(() => {
   vue.name = "响应式！"
 }, 500)
-
 ```
