@@ -1,0 +1,22 @@
+{
+  "name": "vue",
+  "version": "0.1.0",
+  "description": "vue响应式原理核心代码",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/can-dy-jack/vue.git"
+  },
+  "keywords": [
+    "vue"
+  ],
+  "author": "kartjim",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/can-dy-jack/vue/issues"
+  },
+  "homepage": "https://github.com/can-dy-jack/vue#readme"
+}
