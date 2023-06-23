@@ -1,16 +1,3 @@
-const bucket = new WeakMap();
-let activeEffect;
-// 副作用函数
-function effect(fn) {
-  const effectFn = () => {
-    activeEffect = fn;
-    fn();
-  }
-  // 存储所有与该副作用函数相关联的依赖集合
-  effectFn.deps = [];
-  effectFn();
-}
-
 // 需要代理的数据
 const data = {
   name: "vue-base",
@@ -18,6 +5,26 @@ const data = {
 }
 
 
+const bucket = new WeakMap();
+let activeEffect;
+// 副作用函数
+function effect(fn) {
+  const effectFn = () => {
+    cleanup(effectFn)
+    activeEffect = fn;
+    fn();
+  }
+  // 存储所有与该副作用函数相关联的依赖集合
+  effectFn.deps = [];
+  effectFn();
+}
+const cleanup = (fn) => {
+  for (let i = 0; i < fn.deps.length; i++) {
+    const dep = fn.deps[i];
+    dep.delete(fn);
+  }
+  fn.deps.length = 0;
+}
 const track = (target, key) => {
   if (!activeEffect) return;
 
@@ -28,13 +35,17 @@ const track = (target, key) => {
   depsMap.set(key, dep);
 
   dep.add(activeEffect);
+
+  activeEffect.deps.push(dep);
 }
 const trigger = (target, key, newKey) => {
   const depsMap = bucket.get(target)
   if (!depsMap) return;
 
-  const effect = depsMap.get(key)
-  if (effect) effect.forEach(f => f())
+  const effects = depsMap.get(key)
+  const effectToRun = new Set(effects);
+  if (effectToRun) effectToRun.forEach(fn => fn());
+  // if (effect) effect.forEach(f => f())
 }
 const vue = new Proxy(data, {
   get(target, key) {
@@ -46,6 +57,8 @@ const vue = new Proxy(data, {
     trigger(target, key, newKey)
   }
 })
+
+
 
 effect(() => {
   document.getElementById("app").innerText = vue.name
