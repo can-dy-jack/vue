@@ -1,4 +1,4 @@
-const bucket = new Set();
+const bucket = new WeakMap();
 let activeEffect;
 // 副作用函数
 function effect(fn) {
@@ -8,18 +8,37 @@ function effect(fn) {
 
 // 需要代理的数据
 const data = {
-  name: "vue-base"
+  name: "vue-base",
+  version: "0.1.0"
 }
 
+
+const track = (target, key) => {
+  if (!activeEffect) return;
+
+  const depsMap = bucket.get(target) || new Map();
+  bucket.set(target, depsMap);
+
+  const dep = depsMap.get(key) || new Set();
+  depsMap.set(key, dep);
+
+  dep.add(activeEffect);
+}
+const trigger = (target, key, newKey) => {
+  const depsMap = bucket.get(target)
+  if (!depsMap) return;
+
+  const effect = depsMap.get(key)
+  if (effect) effect.forEach(f => f())
+}
 const vue = new Proxy(data, {
   get(target, key) {
-    if (activeEffect) bucket.add(activeEffect)
+    track(target, key)
     return target[key]
   },
   set(target, key, newKey) {
     target[key] = newKey;
-    bucket.forEach(f => f())
-    return true;
+    trigger(target, key, newKey)
   }
 })
 
