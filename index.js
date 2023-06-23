@@ -2,8 +2,13 @@ const bucket = new WeakMap();
 let activeEffect;
 // 副作用函数
 function effect(fn) {
-  activeEffect = fn;
-  fn();
+  const effectFn = () => {
+    activeEffect = fn;
+    fn();
+  }
+  // 存储所有与该副作用函数相关联的依赖集合
+  effectFn.deps = [];
+  effectFn();
 }
 
 // 需要代理的数据
