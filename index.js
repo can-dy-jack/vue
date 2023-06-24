@@ -1,18 +1,23 @@
 // 需要代理的数据
 const data = {
   name: "vue-base",
-  version: "0.1.0"
+  version: "0.1.0",
+  isEdit: false
 }
 
 
 const bucket = new WeakMap();
 let activeEffect;
+let effectStack = [];
 // 副作用函数
 function effect(fn) {
   const effectFn = () => {
     cleanup(effectFn)
-    activeEffect = fn;
+    activeEffect = effectFn;
+    effectStack.push(activeEffect)
     fn();
+    effectStack.pop();
+    activeEffect = effectStack[effectStack.length - 1];
   }
   // 存储所有与该副作用函数相关联的依赖集合
   effectFn.deps = [];
@@ -44,7 +49,9 @@ const trigger = (target, key, newKey) => {
 
   const effects = depsMap.get(key)
   const effectToRun = new Set(effects);
-  if (effectToRun) effectToRun.forEach(fn => fn());
+  if (effectToRun) effectToRun.forEach(fn => {
+    if (fn !== activeEffect) fn(); // 避免死循环
+  });
   // if (effect) effect.forEach(f => f())
 }
 const vue = new Proxy(data, {
@@ -58,16 +65,21 @@ const vue = new Proxy(data, {
   }
 })
 
-
-
+/**
+ * 测试
+ */
 effect(() => {
-  document.getElementById("app").innerText = vue.name
+  // document.getElementById("app").innerText = vue.isEdit ? '分支切换' : vue.name;
+  console.log(vue.name)
+
+  effect(() => {
+    console.log(vue.version)
+    document.getElementById("version").innerText = vue.version;
+  })
 })
 
 // 更改代理的属性，副作用函数会调用
-setTimeout(() => {
-  // console.log(bucket)
-  vue.name = "响应式！"
-}, 500)
-
-
+document.getElementById("btn").onclick = () => {
+  // vue.isEdit = !vue.isEdit;
+  vue.version = "0.2.1"
+}
