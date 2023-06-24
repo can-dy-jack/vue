@@ -10,7 +10,7 @@ const bucket = new WeakMap();
 let activeEffect;
 let effectStack = [];
 // 副作用函数
-function effect(fn) {
+function effect(fn, options = {}) {
   const effectFn = () => {
     cleanup(effectFn)
     activeEffect = effectFn;
@@ -21,6 +21,10 @@ function effect(fn) {
   }
   // 存储所有与该副作用函数相关联的依赖集合
   effectFn.deps = [];
+  effectFn.options = options;
+  if (!options.lazy) { // 默认不是懒执行
+    effectFn();
+  }
   effectFn();
 }
 const cleanup = (fn) => {
@@ -47,12 +51,21 @@ const trigger = (target, key, newKey) => {
   const depsMap = bucket.get(target)
   if (!depsMap) return;
 
-  const effects = depsMap.get(key)
-  const effectToRun = new Set(effects);
-  if (effectToRun) effectToRun.forEach(fn => {
-    if (fn !== activeEffect) fn(); // 避免死循环
+  const effects = depsMap.get(key) || new Set();
+  const effectToRun = new Set();
+  effects.forEach((effect) => {
+    if (effect !== activeEffect) {
+      effectToRun.add(effect);
+    }
+  })
+  
+  effectToRun.forEach(fn => {
+    if (activeEffect.options.scheduler) {
+      activeEffect.options.scheduler(fn);
+    } else {
+      fn();
+    }
   });
-  // if (effect) effect.forEach(f => f())
 }
 const vue = new Proxy(data, {
   get(target, key) {
@@ -71,11 +84,13 @@ const vue = new Proxy(data, {
 effect(() => {
   // document.getElementById("app").innerText = vue.isEdit ? '分支切换' : vue.name;
   console.log(vue.name)
-
-  effect(() => {
-    console.log(vue.version)
-    document.getElementById("version").innerText = vue.version;
-  })
+}, {
+  // options
+  scheduler(fn) {
+    // fn();
+    console.log("scheduler")
+  },
+  lazy: true
 })
 
 // 更改代理的属性，副作用函数会调用
