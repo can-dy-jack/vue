@@ -48,3 +48,10 @@ watch(() => vue.version, (newVal, oldVal) => {
 }, { immediate: true })
 
 ```
+
+## 代理Object
+- 普通读取和属性设置
+- `for ... in ...` 读取
+- `in` 操作符
+- `delete` 操作符
+
