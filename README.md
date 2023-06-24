@@ -1,50 +1,19 @@
 # responsive-base
 响应式数据的基本实现
 
-## 实现
-```js
-function watch(source, callback, options = {}) {
-  let getter; // 支持监控变量或getter函数
-  if (typeof source === 'function') {
-    getter = source;
-  } else {
-    getter = () => traverse(source);
-  }
+## 代理Object
+- 普通读取和属性设置
+- `for ... in ...` 读取
+- `in` 操作符
+- `delete` 操作符
 
-  let oldVal, newVal;
-  function job() {
-    newVal = effectFn();
-    callback(newVal, oldVal);
-    oldVal = newVal;
-  }
+## 代理数组
+- 普通读取设置
+- 修改数组长度 `arr.length = 0`
+- `for ... in ...`
+- `for ... of ...`
+- `includes`方法
+- `push` `pop` `shift` `unshift` `splice` 方法
 
-  const effectFn = effect(
-    () => getter(),
-    {
-      scheduler: job,
-      lazy: true
-    }
-  )
 
-  if (options.immediate) {
-    job();
-  } else {
-    oldVal = effectFn();
-  }
-}
-```
 
-## 响应
-```js
-/**
- * 测试
- */
-document.getElementById("btn").onclick = () => {
-  vue.version = Math.random() + "";
-}
-watch(() => vue.version, (newVal, oldVal) => {
-  document.getElementById("version").innerText = vue.version;
-  console.log("变化了，new:", newVal, "old:", oldVal);
-}, { immediate: true })
-
-```
