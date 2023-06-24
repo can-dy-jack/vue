@@ -5,7 +5,6 @@ const data = {
   isEdit: false
 }
 
-
 const bucket = new WeakMap();
 let activeEffect;
 let effectStack = [];
@@ -110,21 +109,55 @@ function computed(getter) {
 
   return obj;
 }
+function traverse(val, visited = new Set()) {
+  if (typeof val !== 'object' || val == null || visited.has(val)) {
+    return;
+  }
+  visited.add(val);
+  for (const k in val) {
+    traverse(val[k], visited)
+  }
+  return val;
+}
+function watch(source, callback, options = {}) {
+  let getter; // 支持监控变量或getter函数
+  if (typeof source === 'function') {
+    getter = source;
+  } else {
+    getter = () => traverse(source);
+  }
+
+  let oldVal, newVal;
+  function job() {
+    newVal = effectFn();
+    callback(newVal, oldVal);
+    oldVal = newVal;
+  }
+
+  const effectFn = effect(
+    () => getter(),
+    {
+      scheduler: job,
+      lazy: true
+    }
+  )
+
+  if (options.immediate) {
+    job();
+  } else {
+    oldVal = effectFn();
+  }
+}
+
 
 
 /**
  * 测试
  */
-const sum = computed(() => {
-  let str = vue.name + Math.random();
-  document.getElementById("version").innerText = str;
-  return str;
-});
-
 document.getElementById("btn").onclick = () => {
-  console.log(sum.value);
+  vue.version = Math.random() + "";
 }
-document.getElementById("btn2").onclick = () => {
-  vue.name = "I like Vue" // 变量变化
-  console.log(sum.value); // 手动触发
-}
+watch(() => vue.version, (newVal, oldVal) => {
+  document.getElementById("version").innerText = vue.version;
+  console.log("变化了，new:", newVal, "old:", oldVal);
+}, { immediate: true })
