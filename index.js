@@ -2,6 +2,30 @@ const bucket = new WeakMap();
 const ITERATE_KEY = Symbol('iterate');
 let activeEffect;
 let effectStack = [];
+
+const originalIncludes = Array.prototype.includes;
+const arrayMethods = {
+  includes: function (...args) {
+    let res = originalIncludes.apply(this, args);
+    if (!res) {
+      res = originalIncludes.apply(this.raw, args);
+    }
+    return this;
+  }
+};
+let shouldTrack = true;
+;["push", "pop", "shift", "unshift", "splice"].forEach((method) => {
+  const originMethod = Array.prototype[method];
+
+  arrayMethods[method] = function (...args) {
+    shouldTrack = false;
+    let res = originMethod.apply(this, args);
+    shouldTrack = true;
+    return res; 
+  }
+})
+
+
 // 副作用函数
 function effect(fn, options = {}) {
   const effectFn = () => {
@@ -35,7 +59,7 @@ const cleanup = (fn) => {
   fn.deps.length = 0;
 }
 const track = (target, key) => {
-  if (!activeEffect) return;
+  if (!activeEffect || !shouldTrack) return;
 
   const depsMap = bucket.get(target) || new Map();
   bucket.set(target, depsMap);
@@ -47,7 +71,7 @@ const track = (target, key) => {
 
   activeEffect.deps.push(dep);
 }
-const trigger = (target, key, type) => {
+const trigger = (target, key, type, newKey) => {
   const depsMap = bucket.get(target)
   if (!depsMap) return;
 
@@ -68,6 +92,27 @@ const trigger = (target, key, type) => {
       }
     })
   }
+
+  if (type === 'ADD' && Array.isArray(target)) {
+    const iterateEffects = depsMap.get('length') || new Set();
+    iterateEffects.forEach(f => {
+      if (f !== activeEffect) {
+        effectToRun.add(f);
+      }
+    })
+  }
+
+  if (Array.isArray(target) && key === 'length') {
+    depsMap.forEach((fn, idx) => {
+      if (idx >= newKey) {
+        fn.forEach(f => {
+          if (f !== activeEffect) {
+            effectToRun.add(f);
+          }
+        })
+      }
+    })
+  }
   
   effectToRun.forEach(fn => {
     // console.log(fn.options)
@@ -84,8 +129,11 @@ function createReactive(obj, isShadow = false, isReadonly = false) {
       if (key === 'raw') {
         return target;
       }
+      if(Array.isArray(target) && arrayMethods.hasOwnProperty(key)) {
+        return Reflect.get(arrayMethods, key, receiver);
+      }
 
-      if (!isReadonly) {
+      if (!isReadonly && typeof key !== 'symbol') {
         track(target, key)
       }
       const res = Reflect.get(target, key, receiver);
@@ -105,13 +153,15 @@ function createReactive(obj, isShadow = false, isReadonly = false) {
 
       const oldVal = target[key];
   
-      const type = Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
+      const type = Array.isArray(target) ?
+        Number(key) < target.length ? 'SET' : 'ADD' :
+        Object.prototype.hasOwnProperty.call(target, key) ? 'SET' : 'ADD';
   
       const res = Reflect.set(target, key, newKey, receiver);
       // 当值变化且不为NaN时，触发副作用函数
       if (target === receiver.raw) {
         if (oldVal !== newKey && (oldVal === oldVal || newKey === newKey)) {
-          trigger(target, key, type);
+          trigger(target, key, type, newKey);
         }
       }
       return res;
@@ -123,7 +173,7 @@ function createReactive(obj, isShadow = false, isReadonly = false) {
     },
     // for ... in ... 拦截
     ownKeys(target) {
-      track(target, ITERATE_KEY);
+      track(target, Array.isArray(target) ? 'length' : ITERATE_KEY);
       return Reflect.ownKeys(target);
     },
     // delete 操作符
@@ -141,8 +191,15 @@ function createReactive(obj, isShadow = false, isReadonly = false) {
     }
   })
 }
+const reactiveMap = new Map();
 function reactive(obj) {
-  return createReactive(obj);
+  const existProxy = reactiveMap.get(obj);
+  if (existProxy) return existProxy;
+
+  const newProxy = createReactive(obj);
+  reactiveMap.set(obj, newProxy);
+
+  return newProxy;
 }
 function shallowReactive(obj) {
   return createReactive(obj, true);
@@ -230,20 +287,22 @@ function watch(source, callback, options = {}) {
  * 测试
  */
 // 需要代理的数据
-const vue = reactive({
-  name: "vue-base",
-  version: "0.1.0",
-  isEdit: false,
-  get v() {
-    return this.version;
-  }
-});
+const vue = reactive([
+  'name',
+  'version'
+]);
 document.getElementById("btn").onclick = () => {
-  vue[Math.random().toFixed(2)] = 1; // ADD
+  vue[0] = Math.random();
+  document.getElementById("pre").innerText = vue.toString();
 }
-document.getElementById("btn2").onclick = () => {
-  vue.version = Math.random() + ""; // SET
-}
+// document.getElementById("btn2").onclick = () => {
+//   vue.length = 0;
+// }
 effect(() => {
-  document.getElementById("pre").innerText = JSON.stringify(vue, null, 2);
+  vue.push(1)
+  console.log("it run!")
+})
+
+effect(() => {
+  vue.unshift(1)
 })
