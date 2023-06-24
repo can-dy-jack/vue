@@ -19,13 +19,15 @@ function effect(fn, options = {}) {
     effectStack.pop();
     activeEffect = effectStack[effectStack.length - 1];
   }
+  effectFn.options = options;
+
   // 存储所有与该副作用函数相关联的依赖集合
   effectFn.deps = [];
-  effectFn.options = options;
+  
   if (!options.lazy) { // 默认不是懒执行
     effectFn();
   }
-  effectFn();
+  return effectFn;
 }
 const cleanup = (fn) => {
   for (let i = 0; i < fn.deps.length; i++) {
@@ -60,8 +62,9 @@ const trigger = (target, key, newKey) => {
   })
   
   effectToRun.forEach(fn => {
-    if (activeEffect.options.scheduler) {
-      activeEffect.options.scheduler(fn);
+    // console.log(fn.options)
+    if (fn.options.scheduler) {
+      fn.options.scheduler(fn);
     } else {
       fn();
     }
@@ -81,20 +84,21 @@ const vue = new Proxy(data, {
 /**
  * 测试
  */
-effect(() => {
+const effectFn = effect(() => {
   // document.getElementById("app").innerText = vue.isEdit ? '分支切换' : vue.name;
-  console.log(vue.name)
+  // console.log(vue.name)
+  document.getElementById("version").innerText = vue.version;
 }, {
   // options
   scheduler(fn) {
-    // fn();
     console.log("scheduler")
+    fn();
   },
   lazy: true
 })
 
 // 更改代理的属性，副作用函数会调用
 document.getElementById("btn").onclick = () => {
-  // vue.isEdit = !vue.isEdit;
+  effectFn(); // lazy为true时，需要手动调用
   vue.version = "0.2.1"
 }
