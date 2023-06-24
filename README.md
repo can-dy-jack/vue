@@ -18,11 +18,16 @@ let effectStack = [];
 function effect(fn, options = {}) {
   const effectFn = () => {
     cleanup(effectFn)
+
     activeEffect = effectFn;
     effectStack.push(activeEffect)
-    fn();
+
+    const result = fn();
+
     effectStack.pop();
     activeEffect = effectStack[effectStack.length - 1];
+
+    return result;
   }
   effectFn.options = options;
 
@@ -85,6 +90,31 @@ const vue = new Proxy(data, {
     trigger(target, key, newKey)
   }
 })
+function computed(getter) {
+  let val;
+  let dirty = true;
+
+  const effectFn = effect(getter, { 
+    lazy: true,
+    scheduler() {
+      dirty = true;
+      trigger(effectFn, 'value');
+    }
+  });
+
+  const obj = {
+    get value() {
+      if (dirty) {
+        val = effectFn();
+        dirty = false;
+      }
+      track(obj, 'value');
+      return val;
+    }
+  }
+
+  return obj;
+}
 ```
 
 ## 响应
@@ -92,22 +122,17 @@ const vue = new Proxy(data, {
 /**
  * 测试
  */
-const effectFn = effect(() => {
-  // document.getElementById("app").innerText = vue.isEdit ? '分支切换' : vue.name;
-  // console.log(vue.name)
-  document.getElementById("version").innerText = vue.version;
-}, {
-  // options
-  scheduler(fn) {
-    console.log("scheduler")
-    fn();
-  },
-  lazy: true
-})
+const sum = computed(() => {
+  let str = vue.name + Math.random();
+  document.getElementById("version").innerText = str;
+  return str;
+});
 
-// 更改代理的属性，副作用函数会调用
 document.getElementById("btn").onclick = () => {
-  effectFn(); // lazy为true时，需要手动调用
-  vue.version = "0.2.1"
+  console.log(sum.value);
+}
+document.getElementById("btn2").onclick = () => {
+  vue.name = "I like Vue" // 变量变化
+  console.log(sum.value); // 手动触发
 }
 ```
