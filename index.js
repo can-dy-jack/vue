@@ -5,7 +5,6 @@ const data = {
   isEdit: false
 }
 
-
 const bucket = new WeakMap();
 let activeEffect;
 let effectStack = [];
@@ -13,11 +12,16 @@ let effectStack = [];
 function effect(fn, options = {}) {
   const effectFn = () => {
     cleanup(effectFn)
+
     activeEffect = effectFn;
     effectStack.push(activeEffect)
-    fn();
+
+    const result = fn();
+
     effectStack.pop();
     activeEffect = effectStack[effectStack.length - 1];
+
+    return result;
   }
   effectFn.options = options;
 
@@ -80,25 +84,80 @@ const vue = new Proxy(data, {
     trigger(target, key, newKey)
   }
 })
+function computed(getter) {
+  let val;
+  let dirty = true;
+
+  const effectFn = effect(getter, { 
+    lazy: true,
+    scheduler() {
+      dirty = true;
+      trigger(effectFn, 'value');
+    }
+  });
+
+  const obj = {
+    get value() {
+      if (dirty) {
+        val = effectFn();
+        dirty = false;
+      }
+      track(obj, 'value');
+      return val;
+    }
+  }
+
+  return obj;
+}
+function traverse(val, visited = new Set()) {
+  if (typeof val !== 'object' || val == null || visited.has(val)) {
+    return;
+  }
+  visited.add(val);
+  for (const k in val) {
+    traverse(val[k], visited)
+  }
+  return val;
+}
+function watch(source, callback, options = {}) {
+  let getter; // 支持监控变量或getter函数
+  if (typeof source === 'function') {
+    getter = source;
+  } else {
+    getter = () => traverse(source);
+  }
+
+  let oldVal, newVal;
+  function job() {
+    newVal = effectFn();
+    callback(newVal, oldVal);
+    oldVal = newVal;
+  }
+
+  const effectFn = effect(
+    () => getter(),
+    {
+      scheduler: job,
+      lazy: true
+    }
+  )
+
+  if (options.immediate) {
+    job();
+  } else {
+    oldVal = effectFn();
+  }
+}
+
+
 
 /**
  * 测试
  */
-const effectFn = effect(() => {
-  // document.getElementById("app").innerText = vue.isEdit ? '分支切换' : vue.name;
-  // console.log(vue.name)
-  document.getElementById("version").innerText = vue.version;
-}, {
-  // options
-  scheduler(fn) {
-    console.log("scheduler")
-    fn();
-  },
-  lazy: true
-})
-
-// 更改代理的属性，副作用函数会调用
 document.getElementById("btn").onclick = () => {
-  effectFn(); // lazy为true时，需要手动调用
-  vue.version = "0.2.1"
+  vue.version = Math.random() + "";
 }
+watch(() => vue.version, (newVal, oldVal) => {
+  document.getElementById("version").innerText = vue.version;
+  console.log("变化了，new:", newVal, "old:", oldVal);
+}, { immediate: true })
