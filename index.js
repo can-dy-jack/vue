@@ -1,4 +1,4 @@
-import { renderer, reactive } from "./lib/index.js";
+import { renderer, reactive, effect } from "./lib/index.js";
 
 // 对象描述标签
 const vdom = {
@@ -44,14 +44,11 @@ renderer(vdom, document.getElementById("app"));
 
 
 window.obj = { name: "obj" };
-window.obj2 = { name: "test" };
-window.effect = function() {
-    console.log(window.p.name);
-}
 window.bucket = new Set();
 
-window.p = reactive(window.bucket, window.obj, window.effect);
+window.p = reactive(window.obj);
+effect(function() {
+    console.log(window.p.name);
+})
 
-// 手动get，达到监听
-effect();
 
