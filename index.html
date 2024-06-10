@@ -3,28 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Type" content="text/html">
     <title>响应式</title>
 
-    <link rel="stylesheet" href="https://unpkg.com/boltcss/bolt.min.css">
-    <style>
-        body {
-            padding: 20px;
-        }
-    </style>
+    <!-- <link rel="stylesheet" href="https://unpkg.com/boltcss/bolt.min.css"> -->
 </head>
 <body>
-    <div id="app">app</div>
-    <div id="version">{{ version }}</div>
+    <div id="app">
+        加载中...
+    </div>
 
-    <p>
-        <button id="btn">btn</button>
-        <button id="btn2">btn2</button>
-    </p>
-
-    <p>
-        <pre id="pre"></pre>
-    </p>
-
-    <script src="./index.js"></script>
+    <script type="module" src="./index.js"></script>
+    <!-- <script>
+        console.log(renderer);
+    </script> -->
 </body>
 </html>

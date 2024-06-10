@@ -1,10 +1,11 @@
 {
   "name": "vue",
   "version": "0.1.1",
-  "description": "vue响应式原理核心代码",
+  "description": "mini vue",
   "main": "index.js",
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "serve": "serve"
   },
   "repository": {
     "type": "git",
@@ -18,5 +19,8 @@
   "bugs": {
     "url": "https://github.com/can-dy-jack/vue/issues"
   },
-  "homepage": "https://github.com/can-dy-jack/vue#readme"
+  "homepage": "https://github.com/can-dy-jack/vue#readme",
+  "dependencies": {
+    "serve": "^14.2.3"
+  }
 }
